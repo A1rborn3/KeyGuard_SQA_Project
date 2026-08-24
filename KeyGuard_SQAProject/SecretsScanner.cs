@@ -17,15 +17,23 @@ namespace KeyGuard_SQAProject
             new Pattern("SHA1 Hash", @"\b[a-f0-9]{40}\b"),
             new Pattern("SHA256 Hash", @"\b[a-f0-9]{64}\b"),
             new Pattern("Password assignment", @"\b(password|passwd|pwd|secret)\b\s*[:=]\s*['""]?([^\s'""]{4,})['""]?"),
-            new Pattern("Phone", @"\b(\+?\d{1,3}[\s\-]?)?(\(?\d{3}\)?[\s\-]?)?\d{3}[\s\-]?\d{4}\b"),
+            // changed to tighten requirements for phone numbers to avoid false positives, now requires 10 digits in total with optional country code. this will avoid double matches with cc
+            new Pattern("Phone", @"(?<!\d)(?:\+?\d{1,3}[\s\-]?)?(?:\(\d{3}\)[\s\-]?|\d{3}[\s\-])\d{3}[\s\-]?\d{4}(?!\d)"),
             new Pattern("Credit Card (possible)", @"\b(?:\d[ \-]*?){13,19}\b", useLuhn: true),
             new Pattern("Private Key Header", @"-----BEGIN (?:RSA )?PRIVATE KEY-----"),
         };
 
         public static IEnumerable<Finding> ScanFile(string path)
         {
+            //fast path validation
             if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
+            if (!path.EndsWith(".txt") && !path.EndsWith(".log")) throw new ArgumentException("Invalid file type, only .txt and .log files are supported", nameof(path));
+            return ScanFileIterator(path);
+        }
 
+        public static IEnumerable<Finding> ScanFileIterator(string path)
+        {
+            
             using var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var sr = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
 
