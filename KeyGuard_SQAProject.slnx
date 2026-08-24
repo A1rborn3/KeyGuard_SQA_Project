@@ -1,4 +1,4 @@
 <Solution>
+  <Project Path="KeyGuard.test/KeyGuard.test.csproj" />
   <Project Path="KeyGuard_SQAProject/KeyGuard_SQAProject.csproj" />
-  <Project Path="KwyGuard.test/KeyGuard.test.csproj" />
 </Solution>

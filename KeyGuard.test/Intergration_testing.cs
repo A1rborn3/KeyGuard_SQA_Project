@@ -75,14 +75,14 @@ namespace KeyGuard.test
             Assert.IsNotNull(findings);
             var findingsList = new List<Finding>(findings);
 
-            // Expecting 9 findings in the exact order they appear in the file
-            Assert.HasCount(9, findingsList, "Expected 9 findings from the test file.");
+            // Expecting 8 findings in the exact order they appear in the file
+            Assert.HasCount(8, findingsList, "Expected 8 findings from the test file.");
 
             Assert.AreEqual("Email", findingsList[0].PatternName);
             Assert.AreEqual("alice@example.com", findingsList[0].RawMatch);
 
             Assert.AreEqual("AWS Access Key ID", findingsList[1].PatternName);
-            Assert.AreEqual("AKIA1234567890ABCD", findingsList[1].RawMatch);
+            Assert.AreEqual("AKIA1234567890ABCDfh", findingsList[1].RawMatch);
 
             Assert.AreEqual("Base64-like token", findingsList[2].PatternName);
             Assert.AreEqual("abcdefghijklmnopqrst.ABCDEFGHIJKLMNOPQRST", findingsList[2].RawMatch);

@@ -11,7 +11,7 @@ namespace KeyGuard_SQAProject
         public static readonly List<Pattern> Patterns = new()
         {
             new Pattern("Email", @"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"),
-            new Pattern("AWS Access Key ID", @"\bAKIA[0-9A-Z]{16}\b"),
+            new Pattern("AWS Access Key ID", @"\b(AKIA|ASIA|AROA|AIDA)[A-Z0-9]{16}\b"),
             new Pattern("Base64-like token", @"\b[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}\b"),
             new Pattern("MD5 Hash", @"\b[a-f0-9]{32}\b"),
             new Pattern("SHA1 Hash", @"\b[a-f0-9]{40}\b"),
@@ -20,7 +20,7 @@ namespace KeyGuard_SQAProject
             // changed to tighten requirements for phone numbers to avoid false positives, now requires 10 digits in total with optional country code. this will avoid double matches with cc
             new Pattern("Phone", @"(?<!\d)(?:\+?\d{1,3}[\s\-]?)?(?:\(\d{3}\)[\s\-]?|\d{3}[\s\-])\d{3}[\s\-]?\d{4}(?!\d)"),
             new Pattern("Credit Card (possible)", @"\b(?:\d[ \-]*?){13,19}\b", useLuhn: true),
-            new Pattern("Private Key Header", @"-----BEGIN (?:RSA )?PRIVATE KEY-----"),
+            new Pattern("Private Key Header", @"-----BEGIN (?:RSA )?PRIVATE KEY-----")
         };
 
         public static IEnumerable<Finding> ScanFile(string path)
