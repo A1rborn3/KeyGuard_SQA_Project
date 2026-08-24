@@ -104,6 +104,8 @@ namespace KeyGuard.test
             // the private key block RawMatch should include begin and end markers
             StringAssert.Contains(findingsList[7].RawMatch, "-----BEGIN PRIVATE KEY-----");
             StringAssert.Contains(findingsList[7].RawMatch, "-----END PRIVATE KEY-----");
+
+            // future test case, validate the lines are printed correctly ( to find line nums run the pwsh script as it prints them to console)
         }
 
     }
