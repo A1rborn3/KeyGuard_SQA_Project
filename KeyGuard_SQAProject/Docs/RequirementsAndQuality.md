@@ -25,3 +25,11 @@
 | NFR-06 | The system shall run on Windows without needing extra paid tools or accounts. | Portability / Compatibility |
 | NFR-07 | The system shall not keep or log the contents of uploaded files after the session ends, unless the user exports them. | Security / Compliance |
 
+## Acceptance Criteria for Key Features
+
+| Key Feature | Acceptance Criteria |
+|:--|:--|
+| Secret and PII detection | Given a test log file of 10,000 lines containing 15 planted secrets across different types (email, phone number, AWS key, password/secret assignment using the keywords password, passwd, pwd, or secret, private key block, and hash), the scanner shall detect 100% (15 of 15) of the planted findings, each with the correct type and line number. |
+| Credit card checksum | If a number passes the Luhn checksum check, it should show as a finding; if it fails, it shouldn't show, reducing false positives. |
+| Masking | Whenever a finding is shown or saved, at most the first and last 5 characters should be visible, the rest replaced by asterisks. |
+| User warning before commit | If the scanner finds anything, it should warn the user and block the action; if it finds nothing, it exits cleanly and the push can proceed. |
