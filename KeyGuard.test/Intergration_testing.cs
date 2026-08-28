@@ -75,8 +75,8 @@ namespace KeyGuard.test
             Assert.IsNotNull(findings);
             var findingsList = new List<Finding>(findings);
 
-            // Expecting 8 findings in the exact order they appear in the file
-            Assert.HasCount(8, findingsList, "Expected 8 findings from the test file.");
+            // Expecting 10 findings in the exact order they appear in the file
+            Assert.HasCount(10, findingsList, "Expected 10 findings from the test file.");
 
             Assert.AreEqual("Email", findingsList[0].PatternName);
             Assert.AreEqual("alice@example.com", findingsList[0].RawMatch);
@@ -93,17 +93,23 @@ namespace KeyGuard.test
             Assert.AreEqual("Password assignment", findingsList[4].PatternName);
             Assert.AreEqual("s3cr3t!", findingsList[4].RawMatch);
 
-            Assert.AreEqual("Phone", findingsList[5].PatternName);
-            Assert.AreEqual("+1 (555) 123-4567", findingsList[5].RawMatch);
+            Assert.AreEqual("Password assignment", findingsList[5].PatternName);
+            Assert.AreEqual("secret", findingsList[5].RawMatch);
 
-            Assert.AreEqual("Credit Card (possible)", findingsList[6].PatternName);
+            Assert.AreEqual("Password assignment", findingsList[6].PatternName);
+            Assert.AreEqual("s3cr3t!", findingsList[6].RawMatch);
+
+            Assert.AreEqual("Phone", findingsList[7].PatternName);
+            Assert.AreEqual("+1 (555) 123-4567", findingsList[7].RawMatch);
+
+            Assert.AreEqual("Credit Card (possible)", findingsList[8].PatternName);
             // scanner returns digits-only when using Luhn validation
-            Assert.AreEqual("4539148803436467", findingsList[6].RawMatch);
+            Assert.AreEqual("4539148803436467", findingsList[8].RawMatch);
 
-            Assert.AreEqual("Private Key Block", findingsList[7].PatternName);
+            Assert.AreEqual("Private Key Block", findingsList[9].PatternName);
             // the private key block RawMatch should include begin and end markers
-            StringAssert.Contains(findingsList[7].RawMatch, "-----BEGIN PRIVATE KEY-----");
-            StringAssert.Contains(findingsList[7].RawMatch, "-----END PRIVATE KEY-----");
+            StringAssert.Contains(findingsList[9].RawMatch, "-----BEGIN PRIVATE KEY-----");
+            StringAssert.Contains(findingsList[9].RawMatch, "-----END PRIVATE KEY-----");
 
             // future test case, validate the lines are printed correctly ( to find line nums run the pwsh script as it prints them to console)
         }
