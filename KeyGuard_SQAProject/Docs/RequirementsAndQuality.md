@@ -5,8 +5,8 @@
 | FR-01 | The system shall let a user upload a .log or .txt file through the GUI. |
 | FR-02 | The system shall scan the uploaded file for PII (like emails and phone numbers) using regex. |
 | FR-03a | The system shall detect AWS Access Key IDs matching the standard AKIA prefix format.  |
-| FR-03b | The system shall detect password or secret assignments in the form ‘password = value’, ‘pwd: value’, or similar. |
-| FR-03c | The system shall detect PEM-format private key blocks, from a ‘BEGIN PRIVATE KEY' header to its matching ‘END PRIVATE KEY' footer, spanning multiple lines.  |
+| FR-03b | The system shall detect password or secret assignments where the line contains one of the keywords: password, passwd, pwd, or secret, followed by a colon or equals sign, and a value of at least 4 characters (e.g. password = value, pwd: value, secret="value").  |
+| FR-03c | The system shall detect PEM-format private key blocks, from a ‘BEGIN PRIVATE KEY' header to its matching ‘END PRIVATE KEY' footer, regardless of how many lines are in between.  |
 | FR-03d | The system shall detect MD5, SHA1, and SHA256 hash values based on their fixed hexadecimal length (32, 40, and 64 characters respectively). |
 | FR-04 | The system shall produce a Risk Report showing what was found, where (line number), and what type of finding it is. |
 | FR-05 | The system shall produce a Redacted Log file where all detected PII and secrets are masked. |
@@ -25,3 +25,11 @@
 | NFR-06 | The system shall run on Windows without needing extra paid tools or accounts. | Portability / Compatibility |
 | NFR-07 | The system shall not keep or log the contents of uploaded files after the session ends, unless the user exports them. | Security / Compliance |
 
+## Acceptance Criteria for Key Features
+
+| Key Feature | Acceptance Criteria |
+|:--|:--|
+| Secret and PII detection | Given a test log file of 10,000 lines containing 15 planted secrets across different types (email, phone number, AWS key, password/secret assignment using the keywords password, passwd, pwd, or secret, private key block, and hash), the scanner shall detect 100% (15 of 15) of the planted findings, each with the correct type and line number. |
+| Credit card checksum | If a number passes the Luhn checksum check, it should show as a finding; if it fails, it shouldn't show, reducing false positives. |
+| Masking | Whenever a finding is shown or saved, at most the first and last 5 characters should be visible, the rest replaced by asterisks. |
+| User warning before commit | If the scanner finds anything, it should warn the user and block the action; if it finds nothing, it exits cleanly and the push can proceed. |
