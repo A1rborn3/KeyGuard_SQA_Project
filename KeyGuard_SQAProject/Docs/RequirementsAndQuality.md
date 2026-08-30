@@ -28,8 +28,8 @@
 ## Acceptance Criteria for Key Features
 
 | Key Feature | Acceptance Criteria |
-|:--|:--|
-| Secret and PII detection | Given a test log file of 10,000 lines containing 15 planted secrets across different types (email, phone number, AWS key, password/secret assignment using the keywords password, passwd, pwd, or secret, private key block, and hash), the scanner shall detect 100% (15 of 15) of the planted findings, each with the correct type and line number. |
-| Credit card checksum | If a number passes the Luhn checksum check, it should show as a finding; if it fails, it shouldn't show, reducing false positives. |
-| Masking | Whenever a finding is shown or saved, at most the first and last 5 characters should be visible, the rest replaced by asterisks. |
-| User warning before commit | If the scanner finds anything, it should warn the user and block the action; if it finds nothing, it exits cleanly and the push can proceed. |
+|:--|:--|:--|
+| Secret and PII detection | AC-01 | Given a test log file of at least 5,000 lines containing 10 planted secrets across different types (email, phone number, AWS key, password/secret assignment using the keywords password, passwd, pwd, or secret, private key block, and hash), the scanner shall detect 100% (10 of 10) of the planted findings, each with the correct type and line number. |
+| Credit card checksum | AC-02 | If a number passes checksum check, it should show as a finding, otherwise it shouldn’t show to reduce false positives. |
+| Masking | AC-03 | Whenever a finding is shown and saved, only first and last four characters should be visible at most in the save file, the rest is replaced by asterisks, unless it is less than 8 characters long.  |
+| User warning before commit | AC-04 | If scanner finds anything, it should give user warning and if it finds nothing, it exits cleanly and the push can be done. |
