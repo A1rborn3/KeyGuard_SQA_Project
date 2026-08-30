@@ -20,7 +20,7 @@ namespace KeyGuard_SQAProject
             // changed to tighten requirements for phone numbers to avoid false positives, now requires 10 digits in total with optional country code. this will avoid double matches with cc
             new Pattern("Phone", @"(?<!\d)(?:\+?\d{1,3}[\s\-]?)?(?:\(\d{3}\)[\s\-]?|\d{3}[\s\-])\d{3}[\s\-]?\d{4}(?!\d)"),
             new Pattern("Credit Card (possible)", @"\b(?:\d[ \-]*?){13,19}\b", useLuhn: true),
-            new Pattern("Private Key Header", @"-----BEGIN (?:RSA )?PRIVATE KEY-----")
+            new Pattern("Private Key Block", @"-----BEGIN (?:RSA )?PRIVATE KEY-----\s*(?:[A-Za-z0-9+/=]+\s*){1,100}-----END (?:RSA )?PRIVATE KEY-----")
         };
 
         public static IEnumerable<Finding> ScanFile(string path)
