@@ -6,7 +6,7 @@
 | FR-02 | The system shall scan the uploaded file for PII (like emails and phone numbers) using regex. |
 | FR-03a | The system shall detect AWS Access Key IDs matching the standard AKIA prefix format.  |
 | FR-03b | The system shall detect password or secret assignments where the line contains one of the keywords: password, passwd, pwd, or secret, followed by a colon or equals sign, and a value of at least 4 characters (e.g. password = value, pwd: value, secret="value").  |
-| FR-03c | The system shall detect PEM-format private key blocks, from a ‘BEGIN PRIVATE KEY' header to its matching ‘END PRIVATE KEY' footer, regardless of how many lines are in between.  |
+| FR-03c | The system shall detect PEM-format private key blocks, from a ‘BEGIN PRIVATE KEY' header to its matching ‘END PRIVATE KEY' footer, maximum of 100 lines in between.  |
 | FR-03d | The system shall detect MD5, SHA1, and SHA256 hash values based on their fixed hexadecimal length (32, 40, and 64 characters respectively). |
 | FR-04 | The system shall produce a Risk Report showing what was found, where (line number), and what type of finding it is. |
 | FR-05 | The system shall produce a Redacted Log file where all detected PII and secrets are masked. |
