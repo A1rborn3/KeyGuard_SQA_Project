@@ -36,6 +36,10 @@ namespace KeyGuard_SQAProject
                     patterns.Add((line, neg));
                 }
             }
+            else
+            {
+                Console.WriteLine($"[DirectorySorter] No .gitignore found at {gitignorePath}; scanning all files (no ignores applied).");
+            }
 
             foreach (var file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
             {
@@ -53,18 +57,23 @@ namespace KeyGuard_SQAProject
 
                 if (ignored) continue;
 
+
                 // Only attempt to scan files supported by SecretsScanner to avoid exceptions.
                 var ext = Path.GetExtension(file).ToLowerInvariant();
-                if (ext != ".txt" && ext != ".log") continue;
+                if (ext != ".txt" && ext != ".log")
+                {
+                    Console.WriteLine($"[DirectorySorter] Skipping unsupported file type '{ext}' for file: {file}");
+                    continue;
+                }
 
                 var result = new FileScanResult { FilePath = file };
                 try
                 {
                     foreach (var f in SecretsScanner.ScanFile(file)) result.Findings.Add(f);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore files that cannot be scanned for any reason and continue
+                    Console.WriteLine($"[DirectorySorter] Error scanning file {file}: {ex.Message}");
                 }
 
                 yield return result;
@@ -138,3 +147,5 @@ namespace KeyGuard_SQAProject
         }
     }
 }
+//limitations. only reads root .gitignore, does not handle nested .gitignore files, allows basic patterns
+// TODO. build test cases for this, 

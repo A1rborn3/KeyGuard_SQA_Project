@@ -87,12 +87,12 @@ namespace KeyGuard_SQAProject
                             var digits = Regex.Replace(matched, @"\D", "");
                             if (digits.Length >= 13 && digits.Length <= 19 && Luhn.IsValid(digits))
                             {
-                                yield return new Finding { LineNumber = lineNumber, PatternName = p.Name, RawMatch = digits };
+                                yield return new Finding { LineNumber = lineNumber, PatternName = p.Name, RawMatch = digits, FilePath = path };
                             }
                         }
                         else
                         {
-                            yield return new Finding { LineNumber = lineNumber, PatternName = p.Name, RawMatch = matched };
+                            yield return new Finding { LineNumber = lineNumber, PatternName = p.Name, RawMatch = matched, FilePath = path };
                         }
                     }
                 }
