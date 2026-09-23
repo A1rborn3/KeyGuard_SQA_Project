@@ -285,6 +285,34 @@ namespace KeyGuard.test
                 results,
                 "Unsupported file types should be skipped completely.");
         }
+        [TestMethod]
+        public void ScanDirectory_NestedSupportedFile_ReturnsFindings()
+        {
+            // Verify that supported files in nested directories are discovered and scanned.
+            var nestedDirectory = Path.Combine(_directorySorterTestPath, "logs", "archive");
+            Directory.CreateDirectory(nestedDirectory);
+
+            var nestedFile = Path.Combine(nestedDirectory, "archived.log");
+            File.WriteAllText(nestedFile, "email=nested@example.com");
+
+            var results = DirectorySorter
+                .ScanDirectory(_directorySorterTestPath)
+                .ToList();
+
+            Assert.IsTrue(
+                results.Any(result => result.FilePath == nestedFile),
+                "A supported file in a nested directory should be scanned.");
+
+            var findings = results
+                .SelectMany(result => result.Findings)
+                .ToList();
+
+            Assert.IsTrue(
+                findings.Any(finding =>
+                    finding.PatternName == "Email" &&
+                    finding.RawMatch == "nested@example.com"),
+                "The email in the nested file should be detected.");
+        }
 
     }
 }
