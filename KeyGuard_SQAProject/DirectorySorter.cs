@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace KeyGuard_SQAProject
 {
+
     internal class DirectorySorter
     {
+
         // Result container for a single file scan
         internal sealed class FileScanResult
         {
@@ -60,7 +62,7 @@ namespace KeyGuard_SQAProject
 
                 // Only attempt to scan files supported by SecretsScanner to avoid exceptions.
                 var ext = Path.GetExtension(file).ToLowerInvariant();
-                if (ext != ".txt" && ext != ".log")
+                if (!SecretsScanner.config.SupportedFileTypes.Contains(Path.GetExtension(file)))
                 {
                     Console.WriteLine($"[DirectorySorter] Skipping unsupported file type '{ext}' for file: {file}");
                     continue;

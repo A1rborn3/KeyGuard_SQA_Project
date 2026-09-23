@@ -29,7 +29,7 @@ namespace KeyGuard.test
         public void ScanFile_ExistingFile_WrongFileType_ThrowsArgumentException_WithMessage()
         { 
             // locate the TestingFiles folder relative to the test assembly output directory
-            var path = Path.Combine(TestFilesDir, "ReadMe.md");
+            var path = Path.Combine(TestFilesDir, "ReadMe.md"); //update to read config file to check that .md is not a valid file type. fail if it is valid
 
             // sanity check
             Assert.IsTrue(File.Exists(path), $"Test file not found at expected location: {path}");
