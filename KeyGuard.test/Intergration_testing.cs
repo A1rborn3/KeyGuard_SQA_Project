@@ -1,6 +1,7 @@
 ﻿using KeyGuard_SQAProject;
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace KeyGuard.test
@@ -10,6 +11,29 @@ namespace KeyGuard.test
     {
 
         private static readonly string TestFilesDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "TestingFiles"));
+        private string _directorySorterTestPath = null!;
+
+        // Create an isolated temporary directory before each test.
+        [TestInitialize]
+        public void SetupDirectorySorterTestDirectory()
+        {
+            _directorySorterTestPath = Path.Combine(
+                Path.GetTempPath(),
+                "DirectorySorterTests",
+                Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(_directorySorterTestPath);
+        }
+
+        // Remove temporary files after each test.
+        [TestCleanup]
+        public void CleanupDirectorySorterTestDirectory()
+        {
+            if (Directory.Exists(_directorySorterTestPath))
+            {
+                Directory.Delete(_directorySorterTestPath, recursive: true);
+            }
+        }
 
         // Integration test: missing file should throw FileNotFoundException with expected message
         [TestMethod]
@@ -161,6 +185,105 @@ namespace KeyGuard.test
 
             // to find raw info run the pwsh script as it prints them to console)
             // next tests to check masking output
+        }
+
+        [TestMethod]
+        public void ScanDirectory_SupportedFiles_ReturnsFindings()
+        {
+            // Verify that .txt and .log files are discovered and scanned.
+            var textFile = Path.Combine(_directorySorterTestPath, "credentials.txt");
+            var logFile = Path.Combine(_directorySorterTestPath, "application.log");
+
+            File.WriteAllText(textFile, "email=test@example.com");
+            File.WriteAllText(logFile, "password=secret123");
+
+            var results = DirectorySorter
+                .ScanDirectory(_directorySorterTestPath)
+                .ToList();
+
+            Assert.IsTrue(
+                results.Any(result => result.FilePath == textFile),
+                "The .txt file should be scanned.");
+
+            Assert.IsTrue(
+                results.Any(result => result.FilePath == logFile),
+                "The .log file should be scanned.");
+
+            var findings = results
+                .SelectMany(result => result.Findings)
+                .ToList();
+
+            Assert.IsTrue(
+                findings.Any(finding =>
+                    finding.PatternName == "Email" &&
+                    finding.RawMatch == "test@example.com"),
+                "The email secret should be detected.");
+
+            Assert.IsTrue(
+                findings.Any(finding =>
+                    finding.PatternName == "Password assignment" &&
+                    finding.RawMatch == "secret123"),
+                "The password secret should be detected.");
+        }
+
+        [TestMethod]
+        public void ScanDirectory_GitignoredFile_IsNotScannedOrReported()
+        {
+            // Verify that .gitignore exclusions prevent scanning and reporting.
+            var ignoredFile = Path.Combine(_directorySorterTestPath, "ignored.txt");
+            var includedFile = Path.Combine(_directorySorterTestPath, "included.txt");
+
+            File.WriteAllText(
+                Path.Combine(_directorySorterTestPath, ".gitignore"),
+                "ignored.txt");
+
+            File.WriteAllText(ignoredFile, "email=ignored@example.com");
+            File.WriteAllText(includedFile, "email=included@example.com");
+
+            var results = DirectorySorter
+                .ScanDirectory(_directorySorterTestPath)
+                .ToList();
+
+            Assert.IsFalse(
+                results.Any(result => result.FilePath == ignoredFile),
+                "A .gitignored file must not be scanned.");
+
+            Assert.IsTrue(
+                results.Any(result => result.FilePath == includedFile),
+                "A non-ignored file should be scanned.");
+
+            var findings = results
+                .SelectMany(result => result.Findings)
+                .ToList();
+
+            Assert.IsFalse(
+                findings.Any(finding => finding.RawMatch == "ignored@example.com"),
+                "Secrets from ignored files must not be reported.");
+
+            Assert.IsTrue(
+                findings.Any(finding => finding.RawMatch == "included@example.com"),
+                "Secrets from included files should be reported.");
+        }
+
+        [TestMethod]
+        public void ScanDirectory_UnsupportedFiles_AreNotReturned()
+        {
+            // Verify that unsupported file types are skipped completely.
+            File.WriteAllText(
+                Path.Combine(_directorySorterTestPath, "documentation.md"),
+                "email=markdown@example.com");
+
+            File.WriteAllText(
+                Path.Combine(_directorySorterTestPath, "settings.json"),
+                "password=jsonSecret123");
+
+            var results = DirectorySorter
+                .ScanDirectory(_directorySorterTestPath)
+                .ToList();
+
+            Assert.IsEmpty(
+                results,
+                "Unsupported file types should be skipped completely.");
         }
 
     }
