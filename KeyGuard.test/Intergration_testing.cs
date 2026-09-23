@@ -75,8 +75,8 @@ namespace KeyGuard.test
             Assert.IsNotNull(findings);
             var findingsList = new List<Finding>(findings);
 
-            // Expecting 8 findings in the exact order they appear in the file
-            Assert.HasCount(8, findingsList, "Expected 8 findings from the test file.");
+            // Expecting 10 findings in the exact order they appear in the file
+            Assert.HasCount(10, findingsList, "Expected 10 findings from the test file.");
 
             Assert.AreEqual("Email", findingsList[0].PatternName);
             Assert.AreEqual("alice@example.com", findingsList[0].RawMatch);
@@ -93,19 +93,74 @@ namespace KeyGuard.test
             Assert.AreEqual("Password assignment", findingsList[4].PatternName);
             Assert.AreEqual("s3cr3t!", findingsList[4].RawMatch);
 
-            Assert.AreEqual("Phone", findingsList[5].PatternName);
-            Assert.AreEqual("+1 (555) 123-4567", findingsList[5].RawMatch);
+            Assert.AreEqual("Password assignment", findingsList[5].PatternName);
+            Assert.AreEqual("secret", findingsList[5].RawMatch);
 
-            Assert.AreEqual("Credit Card (possible)", findingsList[6].PatternName);
+            Assert.AreEqual("Password assignment", findingsList[6].PatternName);
+            Assert.AreEqual("s3cr3t!", findingsList[6].RawMatch);
+
+            Assert.AreEqual("Phone", findingsList[7].PatternName);
+            Assert.AreEqual("+1 (555) 123-4567", findingsList[7].RawMatch);
+
+            Assert.AreEqual("Credit Card (possible)", findingsList[8].PatternName);
             // scanner returns digits-only when using Luhn validation
-            Assert.AreEqual("4539148803436467", findingsList[6].RawMatch);
+            Assert.AreEqual("4539148803436467", findingsList[8].RawMatch);
 
-            Assert.AreEqual("Private Key Block", findingsList[7].PatternName);
+            Assert.AreEqual("Private Key Block", findingsList[9].PatternName);
             // the private key block RawMatch should include begin and end markers
-            StringAssert.Contains(findingsList[7].RawMatch, "-----BEGIN PRIVATE KEY-----");
-            StringAssert.Contains(findingsList[7].RawMatch, "-----END PRIVATE KEY-----");
+            StringAssert.Contains(findingsList[9].RawMatch, "-----BEGIN PRIVATE KEY-----");
+            StringAssert.Contains(findingsList[9].RawMatch, "-----END PRIVATE KEY-----");
 
             // future test case, validate the lines are printed correctly ( to find line nums run the pwsh script as it prints them to console)
+        }
+
+        [TestMethod]
+        public void ScanFile_ExistingFile_ValidFileTypeWithSecrets_ReturnsLineNumbers()
+        {
+            // locate the TestingFiles folder relative to the test assembly output directory
+            var path = Path.Combine(TestFilesDir, "Secrets.log");
+            // sanity check
+            Assert.IsTrue(File.Exists(path), $"Test file not found at expected location: {path}");
+            var findings = SecretsScanner.ScanFile(path);
+            // Assert that findings are returned and contain expected patterns
+            Assert.IsNotNull(findings);
+            var findingsList = new List<Finding>(findings);
+
+            // Expecting 10 findings in the exact order they appear in the file
+            Assert.HasCount(10, findingsList, "Expected 10 findings from the test file.");
+
+            Assert.AreEqual("Email", findingsList[0].PatternName);
+            Assert.AreEqual(7, findingsList[0].LineNumber);
+
+            Assert.AreEqual("AWS Access Key ID", findingsList[1].PatternName);
+            Assert.AreEqual(296, findingsList[1].LineNumber);
+
+            Assert.AreEqual("Base64-like token", findingsList[2].PatternName);
+            Assert.AreEqual(758, findingsList[2].LineNumber);
+
+            Assert.AreEqual("MD5 Hash", findingsList[3].PatternName);
+            Assert.AreEqual(1046, findingsList[3].LineNumber);
+
+            Assert.AreEqual("Password assignment", findingsList[4].PatternName);
+            Assert.AreEqual(1749, findingsList[4].LineNumber);
+
+            Assert.AreEqual("Password assignment", findingsList[5].PatternName);
+            Assert.AreEqual(1850, findingsList[5].LineNumber);
+
+            Assert.AreEqual("Password assignment", findingsList[6].PatternName);
+            Assert.AreEqual(1937, findingsList[6].LineNumber);
+
+            Assert.AreEqual("Phone", findingsList[7].PatternName);
+            Assert.AreEqual(2416, findingsList[7].LineNumber);
+
+            Assert.AreEqual("Credit Card (possible)", findingsList[8].PatternName);
+            // scanner returns digits-only when using Luhn validation
+            Assert.AreEqual(2819, findingsList[8].LineNumber);
+
+            Assert.AreEqual(3387, findingsList[9].LineNumber);
+
+            // to find raw info run the pwsh script as it prints them to console)
+            // next tests to check masking output
         }
 
     }
