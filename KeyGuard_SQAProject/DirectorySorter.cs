@@ -17,16 +17,17 @@ namespace KeyGuard_SQAProject
             public List<Finding> Findings { get; init; } = new();
         }
 
-        // Scans the provided directory for files not excluded by a .gitignore at the root
-        // and runs SecretsScanner on supported files (.txt, .log).
+        // Scans the input directory and notes all files which are not excluded by a given gitignore file
+        // runs each file through secrect scanner
         public static IEnumerable<FileScanResult> ScanDirectory(string rootPath)
         {
             if (string.IsNullOrWhiteSpace(rootPath)) throw new ArgumentException("rootPath is required", nameof(rootPath));
-            if (!Directory.Exists(rootPath)) throw new DirectoryNotFoundException(rootPath);
+            if (!Directory.Exists(rootPath)) throw new DirectoryNotFoundException(rootPath); //validates the root path exists
 
             var gitignorePath = Path.Combine(rootPath, ".gitignore");
             var patterns = new List<(string Pattern, bool IsNegation)>();
             if (File.Exists(gitignorePath))
+            //checks to see if a .gitignore file exists in the root directory
             {
                 foreach (var raw in File.ReadAllLines(gitignorePath))
                 {
@@ -36,16 +37,16 @@ namespace KeyGuard_SQAProject
                     bool neg = line.StartsWith("!");
                     if (neg) line = line.Substring(1);
                     patterns.Add((line, neg));
-                }
+                } //saves all gitignore patterns to a list
             }
             else
             {
                 Console.WriteLine($"[DirectorySorter] No .gitignore found at {gitignorePath}; scanning all files (no ignores applied).");
-            }
+            } //if no .gitignore file is found, all files will be scanned as default
 
             foreach (var file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
             {
-                // compute relative path with forward slashes (gitignore uses '/').
+                // find relative file paths using forward slashes for gitignore matching
                 var rel = Path.GetRelativePath(rootPath, file).Replace(Path.DirectorySeparatorChar, '/');
 
                 bool ignored = false;
@@ -54,13 +55,13 @@ namespace KeyGuard_SQAProject
                     if (IsMatch(pattern, rel))
                     {
                         if (neg) ignored = false; else ignored = true;
-                    }
+                    }//if a file matches a pattern it will be ignored
                 }
 
                 if (ignored) continue;
 
 
-                // Only attempt to scan files supported by SecretsScanner to avoid exceptions.
+                // Reads universal config file to detemind the supported file types. this is to keep all scripts supporting the same files unless overridden
                 var ext = Path.GetExtension(file).ToLowerInvariant();
                 if (!SecretsScanner.config.SupportedFileTypes.Contains(Path.GetExtension(file)))
                 {
@@ -70,28 +71,26 @@ namespace KeyGuard_SQAProject
 
                 var result = new FileScanResult { FilePath = file };
                 try
-                {
+                {//tries to scan all valid files and add findings to to final object. if an error occurs, it will be logged and the scan will continue with the next file
                     foreach (var f in SecretsScanner.ScanFile(file)) result.Findings.Add(f);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[DirectorySorter] Error scanning file {file}: {ex.Message}");
-                }
+                }//gives proper error message on fail. non-blocking
 
                 yield return result;
             }
         }
 
-        // Very small subset of gitignore-style matching to satisfy basic use-cases.
-        // - lines beginning with '/' are matched against the repository-root relative path
-        // - lines without '/' are matched against the filename only
-        // - trailing '/' patterns match directories (we test prefix)
-        // - no support for character classes, escapes, or complex gitignore features
+        //matches basic gitignore patterns to file paths. basic matching supports most use cases
+        //wild card matching, negitive and positive patterns supported. does not support nested .gitignore files, only root .gitignore is read
+        //complex patterns are not supported
         private static bool IsMatch(string pattern, string relativePath)
         {
             if (string.IsNullOrEmpty(pattern)) return false;
 
-            // normalise
+            // normalise to forward slashes for direct matching
             pattern = pattern.Replace("\\", "/");
 
             bool directoryPattern = pattern.EndsWith("/");
@@ -141,13 +140,13 @@ namespace KeyGuard_SQAProject
                     }
                 }
                 else if (c == '?') sb.Append('.') ;
-                else sb.Append(Regex.Escape(c.ToString()));
+                else sb.Append(Regex.Escape(c.ToString())); 
             }
             sb.Append('$');
 
-            return Regex.IsMatch(text, sb.ToString(), RegexOptions.IgnoreCase);
+            return Regex.IsMatch(text, sb.ToString(), RegexOptions.IgnoreCase); //returns true if the text matches the pattern, false otherwise
         }
     }
 }
 //limitations. only reads root .gitignore, does not handle nested .gitignore files, allows basic patterns
-// TODO. build test cases for this, 
+// TODO. 
