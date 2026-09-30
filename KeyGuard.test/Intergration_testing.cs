@@ -229,10 +229,15 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_GitignoredFile_IsNotScannedOrReported()
         {
-            // Verify that .gitignore exclusions prevent scanning and reporting.
+            // This test covers the repository-aware exclusion flow: if a file is listed in .gitignore,
+            // it should be treated as intentionally excluded and never be scanned or contribute any
+            // findings. This ensures the scanner matches developer guidance and avoids noisy results from
+            // files that are intentionally left out of version control.
             var ignoredFile = Path.Combine(_directorySorterTestPath, "ignored.txt");
             var includedFile = Path.Combine(_directorySorterTestPath, "included.txt");
 
+            // Add a .gitignore that excludes only the ignored file. The included file remains visible so
+            // the test can confirm the exclusion is selective rather than global.
             File.WriteAllText(
                 Path.Combine(_directorySorterTestPath, ".gitignore"),
                 "ignored.txt");
@@ -244,10 +249,12 @@ namespace KeyGuard.test
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
+            // The first assertion verifies that the excluded file is absent from the scan results entirely.
             Assert.IsFalse(
                 results.Any(result => result.FilePath == ignoredFile),
                 "A .gitignored file must not be scanned.");
 
+            // This confirms the filter is not overbroad: non-ignored files are still processed normally.
             Assert.IsTrue(
                 results.Any(result => result.FilePath == includedFile),
                 "A non-ignored file should be scanned.");
@@ -256,10 +263,14 @@ namespace KeyGuard.test
                 .SelectMany(result => result.Findings)
                 .ToList();
 
+            // Even if the ignored file had been scanned in some other path, its secret must not appear in
+            // the final findings list. This validates the end-to-end exclusion behavior.
             Assert.IsFalse(
                 findings.Any(finding => finding.RawMatch == "ignored@example.com"),
                 "Secrets from ignored files must not be reported.");
 
+            // By contrast, a valid included file should still produce its expected finding, proving the
+            // exclusion logic only suppresses the intentionally ignored path.
             Assert.IsTrue(
                 findings.Any(finding => finding.RawMatch == "included@example.com"),
                 "Secrets from included files should be reported.");
