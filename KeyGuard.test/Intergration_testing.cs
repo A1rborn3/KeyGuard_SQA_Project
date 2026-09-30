@@ -183,7 +183,7 @@ namespace KeyGuard.test
 
             Assert.AreEqual(3387, findingsList[9].LineNumber);
 
-            // to find raw info run the pwsh script as it prints them to console)
+            // to find raw info run the pwsh script as it prints them to console
             // next tests to check masking output
         }
 
@@ -288,10 +288,15 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_NestedSupportedFile_ReturnsFindings()
         {
-            // Verify that supported files in nested directories are discovered and scanned.
+            // This test verifies the recursive behavior of DirectorySorter: files located in nested
+            // subdirectories must still be discovered and scanned, not just files directly under the
+            // root directory. This mirrors real-world usage where logs, archives, or generated output
+            // may be stored in deeper folder structures.
             var nestedDirectory = Path.Combine(_directorySorterTestPath, "logs", "archive");
             Directory.CreateDirectory(nestedDirectory);
 
+            // Place a supported file under a nested path so we can validate that the scanner traverses
+            // the directory tree and does not stop at the first level.
             var nestedFile = Path.Combine(nestedDirectory, "archived.log");
             File.WriteAllText(nestedFile, "email=nested@example.com");
 
@@ -299,6 +304,7 @@ namespace KeyGuard.test
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
+            // The first assertion proves the nested file was included in the scan results.
             Assert.IsTrue(
                 results.Any(result => result.FilePath == nestedFile),
                 "A supported file in a nested directory should be scanned.");
@@ -307,6 +313,8 @@ namespace KeyGuard.test
                 .SelectMany(result => result.Findings)
                 .ToList();
 
+            // The second assertion ensures the nested file was not only discovered, but also analyzed
+            // by the pattern engine and yielded a real detection match.
             Assert.IsTrue(
                 findings.Any(finding =>
                     finding.PatternName == "Email" &&
