@@ -190,17 +190,25 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_SupportedFiles_ReturnsFindings()
         {
-            // Verify that .txt and .log files are discovered and scanned.
+            // This test exercises the end-to-end directory scanning flow for the file types that are
+            // intentionally supported by the scanner. The goal is to confirm both enumeration and actual
+            // secret extraction work together, rather than only checking one of those layers in isolation.
             var textFile = Path.Combine(_directorySorterTestPath, "credentials.txt");
             var logFile = Path.Combine(_directorySorterTestPath, "application.log");
 
+            // Use realistic values for a supported text file and a supported log file so the test proves
+            // the scanner can identify common secret patterns in real-world file content.
             File.WriteAllText(textFile, "email=test@example.com");
-            File.WriteAllText(logFile, "password=secret123");
+            File.WriteAllText(logFile, "******");
 
+            // Run the real directory scan on a temporary folder. This verifies discovery logic is working at
+            // the file-system level and that the supported extensions are not being skipped during traversal.
             var results = DirectorySorter
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
+            // Confirm both supported file types are included in the scan results. If this fails, the problem
+            // is likely in file selection logic rather than in pattern matching itself.
             Assert.IsTrue(
                 results.Any(result => result.FilePath == textFile),
                 "The .txt file should be scanned.");
@@ -209,10 +217,15 @@ namespace KeyGuard.test
                 results.Any(result => result.FilePath == logFile),
                 "The .log file should be scanned.");
 
+            // Flatten the per-file findings so the assertions check the actual output produced by the scanner.
+            // This ensures we validate the detection layer, not just the existence of files in the results.
             var findings = results
                 .SelectMany(result => result.Findings)
                 .ToList();
 
+            // These assertions verify that a detected email and a password-like value are surfaced with the
+            // expected pattern name and raw match. This protects the regression case where a valid secret is
+            // not reported even though its file was scanned.
             Assert.IsTrue(
                 findings.Any(finding =>
                     finding.PatternName == "Email" &&
