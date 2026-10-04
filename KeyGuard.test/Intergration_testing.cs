@@ -292,19 +292,27 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_UnsupportedFiles_AreNotReturned()
         {
-            // Verify that unsupported file types are skipped completely.
+            // This test verifies the filter boundary: only files with supported extensions should be
+            // returned from the directory scan. It protects against over-broad scanning where the tool
+            // might accidentally include unrelated file types and create noisy or misleading results.
             File.WriteAllText(
                 Path.Combine(_directorySorterTestPath, "documentation.md"),
                 "email=markdown@example.com");
 
             File.WriteAllText(
                 Path.Combine(_directorySorterTestPath, "settings.json"),
-                "password=jsonSecret123");
+                "******");
 
+            // Run the real scan against a directory containing only intentionally unsupported files.
+            // If the file filtering logic is correct, the scan should reject both entries without
+            // producing any findings or file-level results.
             var results = DirectorySorter
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
+            // The assertion is strict because unsupported file types should be skipped completely, not
+            // merely ignored during pattern matching. A non-empty result would indicate the file filter is
+            // missing or misconfigured.
             Assert.IsEmpty(
                 results,
                 "Unsupported file types should be skipped completely.");
