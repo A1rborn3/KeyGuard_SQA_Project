@@ -3,11 +3,49 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace KeyGuard_SQAProject
 {
+    internal class ScannerConfig
+    {
+        [JsonPropertyName("supportedFileTypes")]
+        public HashSet<string> SupportedFileTypes { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        //import the config.json for files types
+    }
     internal static class SecretsScanner
     {
+        internal static readonly ScannerConfig config = LoadConfig();
+
+        private static ScannerConfig LoadConfig()
+        {
+            if (File.Exists("config.json"))
+            {
+                try
+                {
+                    return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText("config.json")) ?? new ScannerConfig();
+                }
+                catch (JsonException)
+                {
+                    Console.WriteLine("Error reading config.json. Using default config.");
+                }
+            } // if the file exists we use it, otherwise we throw an exception and create a new config file with default values
+            
+            
+            var defaultConfig = new ScannerConfig
+            {
+                SupportedFileTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ".txt",
+                    ".log"
+                }//default supported file types as a fallback if the config.json file is not found
+            };
+            File.WriteAllText("config.json", JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true }));
+            Console.Write("Config not found. Default config with .txt and .log used");
+            return defaultConfig;
+            
+        }
         public static readonly List<Pattern> Patterns = new()
         {
             new Pattern("Email", @"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"),
@@ -27,7 +65,11 @@ namespace KeyGuard_SQAProject
         {
             //fast path validation
             if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
-            if (!path.EndsWith(".txt") && !path.EndsWith(".log")) throw new ArgumentException("Invalid file type, only .txt and .log files are supported", nameof(path));
+
+            //checks config file for supported types
+            if (!config.SupportedFileTypes.Contains(Path.GetExtension(path)))
+                throw new ArgumentException("Invalid file type", nameof(path));
+
             return ScanFileIterator(path);
         }
 
@@ -42,6 +84,7 @@ namespace KeyGuard_SQAProject
             bool inPrivateKeyBlock = false;
             var privateKeyBuffer = new StringBuilder();
             long privateKeyStartLine = 0;
+
 
             while ((line = sr.ReadLine()) != null)
             {
