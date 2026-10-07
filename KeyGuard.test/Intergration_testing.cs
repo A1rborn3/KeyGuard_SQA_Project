@@ -1,5 +1,6 @@
 ﻿using KeyGuard_SQAProject;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -42,7 +43,7 @@ namespace KeyGuard.test
             var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".txt"); // guaranteed missing path
 
             var ex = Assert.Throws<FileNotFoundException>(() =>
-                SecretsScanner.ScanFile(path) 
+                SecretsScanner.ScanFile(path)
             );
 
             StringAssert.Contains(ex.Message, "File not found");
@@ -51,7 +52,7 @@ namespace KeyGuard.test
 
         [TestMethod]
         public void ScanFile_ExistingFile_WrongFileType_ThrowsArgumentException_WithMessage()
-        { 
+        {
             // locate the TestingFiles folder relative to the test assembly output directory
             var path = Path.Combine(TestFilesDir, "ReadMe.md"); //update to read config file to check that .md is not a valid file type. fail if it is valid
 
@@ -266,6 +267,35 @@ namespace KeyGuard.test
         }
 
         [TestMethod]
+        public void ScanDirectory_GitignoredDirectory_IsNotScannedOrReported()
+        {
+            var ignoredDirectory = Path.Combine(_directorySorterTestPath, ".vs", "v18", "TestStore");
+            Directory.CreateDirectory(ignoredDirectory);
+            var ignoredFile = Path.Combine(ignoredDirectory, "StandardOutput.txt");
+            var includedFile = Path.Combine(_directorySorterTestPath, "included.txt");
+
+            File.WriteAllText(Path.Combine(_directorySorterTestPath, ".gitignore"), ".vs/");
+            File.WriteAllText(ignoredFile, "email=ignored@example.com");
+            File.WriteAllText(includedFile, "email=included@example.com");
+
+            var results = DirectorySorter
+                .ScanDirectory(_directorySorterTestPath)
+                .ToList();
+
+            Assert.IsFalse(
+                results.Any(result => result.FilePath == ignoredFile),
+                "Files beneath an ignored directory must not be scanned.");
+            Assert.IsTrue(
+                results.Any(result => result.FilePath == includedFile),
+                "Files outside the ignored directory should still be scanned.");
+
+            Assert.IsFalse(
+                results.SelectMany(result => result.Findings)
+                    .Any(finding => finding.RawMatch == "ignored@example.com"),
+                "Secrets in the ignored directory must not be reported.");
+        }
+
+        [TestMethod]
         public void ScanDirectory_UnsupportedFiles_AreNotReturned()
         {
             // Verify that unsupported file types are skipped completely.
@@ -312,6 +342,30 @@ namespace KeyGuard.test
                     finding.PatternName == "Email" &&
                     finding.RawMatch == "nested@example.com"),
                 "The email in the nested file should be detected.");
+        }
+
+
+        [TestMethod]
+        public void ScanRepository_CompletesInUnderThirtySeconds()
+        {
+            var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+            while (repositoryRoot is not null &&
+                   !File.Exists(Path.Combine(repositoryRoot.FullName, "KeyGuard_SQAProject.slnx")))
+            {
+                repositoryRoot = repositoryRoot.Parent;
+            }
+
+            Assert.IsNotNull(repositoryRoot, "Could not locate the repository root.");
+
+            var stopwatch = Stopwatch.StartNew();
+            var results = DirectorySorter.ScanDirectory(repositoryRoot.FullName).ToList();
+            stopwatch.Stop();
+
+            Console.WriteLine(
+                $"Repository scan took {stopwatch.Elapsed.TotalSeconds:F3} seconds and scanned {results.Count} supported files.");
+            Assert.IsTrue(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(30),
+                $"Repository scan took {stopwatch.Elapsed.TotalSeconds:F3} seconds; it must take less than 30 seconds.");
         }
 
     }
