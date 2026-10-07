@@ -9,8 +9,8 @@ namespace KeyGuard_SQAProject
     {
         private static void PrintUsage()
         {
-            Console.WriteLine("Usage: KeyGuard_Scanner <logFilePath> [--out <reportPath>]");
-            Console.WriteLine("Scans a log file for likely secrets (emails, keys, hashes, cc numbers, passwords, private keys).");
+            Console.WriteLine("Usage: KeyGuard_Scanner <fileOrDirectoryPath> [--out <reportPath>]");
+            Console.WriteLine("Scans a .log or .txt file, or supported files in a directory, for likely secrets.");
         }
 
         private static int Main(string[] args)
@@ -18,7 +18,7 @@ namespace KeyGuard_SQAProject
             if (args.Length == 0)
             {
                 PrintUsage();
-                Console.Write("Enter path to log file: ");
+                Console.Write("Enter path to file or directory: ");
                 var input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(input)) return 1;
                 args = new[] { input.Trim() };
@@ -37,13 +37,27 @@ namespace KeyGuard_SQAProject
 
             try
             {
-                Console.WriteLine($"Scanning {filePath} ... (streaming, line-by-line)");
+                bool isDirectory = Directory.Exists(filePath);
+                Console.WriteLine(isDirectory
+                    ? $"Scanning directory {filePath} ..."
+                    : $"Scanning {filePath} ... (streaming, line-by-line)");
+
                 var findings = new List<Finding>();
-                foreach (var f in SecretsScanner.ScanFile(filePath))
+                if (isDirectory)
                 {
-                    findings.Add(f);
+                    findings.AddRange(
+                        DirectorySorter.ScanDirectory(filePath)
+                            .SelectMany(result => result.Findings));
+                }
+                else
+                {
+                    findings.AddRange(SecretsScanner.ScanFile(filePath));
+                }
+
+                foreach (var finding in findings)
+                {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(f.ToString());
+                    Console.WriteLine(finding.ToString());
                     Console.ResetColor();
                 }
 
@@ -54,9 +68,10 @@ namespace KeyGuard_SQAProject
                     writer.WriteLine($"Generated: {DateTime.UtcNow:O}");
                     writer.WriteLine($"Findings: {findings.Count}");
                     writer.WriteLine();
-                    foreach (var f in findings)
+                    foreach (var finding in findings)
                     {
-                        writer.WriteLine($"{f.LineNumber}\t{f.PatternName}\t{f.Masked}");
+                        var filePrefix = isDirectory ? $"{finding.FilePath}\t" : string.Empty;
+                        writer.WriteLine($"{filePrefix}{finding.LineNumber}\t{finding.PatternName}\t{finding.Masked}");
                     }
                     Console.WriteLine($"Report written to: {outPath}");
                 }

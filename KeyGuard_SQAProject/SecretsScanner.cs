@@ -19,10 +19,15 @@ namespace KeyGuard_SQAProject
 
         private static ScannerConfig LoadConfig()
         {
-            if (File.Exists("config.json"))
+            var configPath = Path.Combine(Environment.CurrentDirectory, "config.json");
+            if (!File.Exists(configPath))
             {
-                return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText("config.json")) ?? new ScannerConfig();
+                configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
             }
+
+            if (File.Exists(configPath))
+                return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText(configPath)) ?? new ScannerConfig();
+
             return new ScannerConfig();
         }
         public static readonly List<Pattern> Patterns = new()
@@ -79,7 +84,8 @@ namespace KeyGuard_SQAProject
                         {
                             LineNumber = privateKeyStartLine,
                             PatternName = "Private Key Block",
-                            RawMatch = privateKeyBuffer.ToString()
+                            RawMatch = privateKeyBuffer.ToString(),
+                            FilePath = path
                         };
                         privateKeyBuffer.Clear();
                     }
