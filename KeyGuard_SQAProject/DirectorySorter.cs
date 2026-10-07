@@ -96,9 +96,21 @@ namespace KeyGuard_SQAProject
             bool directoryPattern = pattern.EndsWith("/");
             if (directoryPattern) pattern = pattern.TrimEnd('/');
 
-            // if the pattern contains no slash, match against filename only
+            // A slash-terminated pattern without a path matches any directory segment.
             if (!pattern.Contains('/'))
             {
+                if (directoryPattern)
+                {
+                    var pathSegments = relativePath.Split('/');
+                    for (int i = 0; i < pathSegments.Length - 1; i++)
+                    {
+                        if (WildcardMatch(pathSegments[i], pattern)) return true;
+                    }
+
+                    return false;
+                }
+
+                // Otherwise, match against filename only.
                 var fileName = Path.GetFileName(relativePath);
                 return WildcardMatch(fileName, pattern);
             }

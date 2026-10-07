@@ -20,32 +20,38 @@ namespace KeyGuard_SQAProject
 
         private static ScannerConfig LoadConfig()
         {
-            var configPath = Path.Combine(Environment.CurrentDirectory, "config.json");
-            if (!File.Exists(configPath))
+            var configPaths = new[]
             {
+                Path.Combine(Environment.CurrentDirectory, "config.json"),
+                Path.Combine(AppContext.BaseDirectory, "config.json")
+            };
+
+            foreach (var configPath in configPaths)
+            {
+                if (!File.Exists(configPath)) continue;
+
                 try
                 {
-                    return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText("config.json")) ?? new ScannerConfig();
+                    return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText(configPath))
+                        ?? new ScannerConfig();
                 }
                 catch (JsonException)
                 {
                     Console.WriteLine("Error reading config.json. Using default config.");
+                    break;
                 }
-            } // if the file exists we use it, otherwise we throw an exception and create a new config file with default values
-            
-            
+            }
+
             var defaultConfig = new ScannerConfig
             {
                 SupportedFileTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     ".txt",
                     ".log"
-                }//default supported file types as a fallback if the config.json file is not found
+                }
             };
-            File.WriteAllText("config.json", JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true }));
-            Console.Write("Config not found. Default config with .txt and .log used");
+            Console.WriteLine("Config not found. Default config with .txt and .log used.");
             return defaultConfig;
-            
         }
         public static readonly List<Pattern> Patterns = new()
         {
