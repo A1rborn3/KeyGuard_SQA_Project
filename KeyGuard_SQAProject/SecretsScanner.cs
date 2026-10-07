@@ -12,6 +12,7 @@ namespace KeyGuard_SQAProject
     {
         [JsonPropertyName("supportedFileTypes")]
         public HashSet<string> SupportedFileTypes { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        //import the config.json for files types
     }
     internal static class SecretsScanner
     {
@@ -22,13 +23,29 @@ namespace KeyGuard_SQAProject
             var configPath = Path.Combine(Environment.CurrentDirectory, "config.json");
             if (!File.Exists(configPath))
             {
-                configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
-            }
-
-            if (File.Exists(configPath))
-                return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText(configPath)) ?? new ScannerConfig();
-
-            return new ScannerConfig();
+                try
+                {
+                    return JsonSerializer.Deserialize<ScannerConfig>(File.ReadAllText("config.json")) ?? new ScannerConfig();
+                }
+                catch (JsonException)
+                {
+                    Console.WriteLine("Error reading config.json. Using default config.");
+                }
+            } // if the file exists we use it, otherwise we throw an exception and create a new config file with default values
+            
+            
+            var defaultConfig = new ScannerConfig
+            {
+                SupportedFileTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ".txt",
+                    ".log"
+                }//default supported file types as a fallback if the config.json file is not found
+            };
+            File.WriteAllText("config.json", JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true }));
+            Console.Write("Config not found. Default config with .txt and .log used");
+            return defaultConfig;
+            
         }
         public static readonly List<Pattern> Patterns = new()
         {
