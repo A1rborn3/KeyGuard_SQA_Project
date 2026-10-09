@@ -1,5 +1,6 @@
 ﻿using KeyGuard_SQAProject;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -42,7 +43,7 @@ namespace KeyGuard.test
             var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".txt"); // guaranteed missing path
 
             var ex = Assert.Throws<FileNotFoundException>(() =>
-                SecretsScanner.ScanFile(path) 
+                SecretsScanner.ScanFile(path)
             );
 
             StringAssert.Contains(ex.Message, "File not found");
@@ -51,7 +52,7 @@ namespace KeyGuard.test
 
         [TestMethod]
         public void ScanFile_ExistingFile_WrongFileType_ThrowsArgumentException_WithMessage()
-        { 
+        {
             // locate the TestingFiles folder relative to the test assembly output directory
             var path = Path.Combine(TestFilesDir, "ReadMe.md"); //update to read config file to check that .md is not a valid file type. fail if it is valid
 
@@ -183,32 +184,24 @@ namespace KeyGuard.test
 
             Assert.AreEqual(3387, findingsList[9].LineNumber);
 
-            // to find raw info run the pwsh script as it prints them to console
+            // to find raw info run the pwsh script as it prints them to console)
             // next tests to check masking output
         }
 
         [TestMethod]
         public void ScanDirectory_SupportedFiles_ReturnsFindings()
         {
-            // This test exercises the end-to-end directory scanning flow for the file types that are
-            // intentionally supported by the scanner. The goal is to confirm both enumeration and actual
-            // secret extraction work together, rather than only checking one of those layers in isolation.
+            // Verify that .txt and .log files are discovered and scanned.
             var textFile = Path.Combine(_directorySorterTestPath, "credentials.txt");
             var logFile = Path.Combine(_directorySorterTestPath, "application.log");
 
-            // Use realistic values for a supported text file and a supported log file so the test proves
-            // the scanner can identify common secret patterns in real-world file content.
             File.WriteAllText(textFile, "email=test@example.com");
-            File.WriteAllText(logFile, "******");
+            File.WriteAllText(logFile, "password=secret123");
 
-            // Run the real directory scan on a temporary folder. This verifies discovery logic is working at
-            // the file-system level and that the supported extensions are not being skipped during traversal.
             var results = DirectorySorter
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
-            // Confirm both supported file types are included in the scan results. If this fails, the problem
-            // is likely in file selection logic rather than in pattern matching itself.
             Assert.IsTrue(
                 results.Any(result => result.FilePath == textFile),
                 "The .txt file should be scanned.");
@@ -217,15 +210,10 @@ namespace KeyGuard.test
                 results.Any(result => result.FilePath == logFile),
                 "The .log file should be scanned.");
 
-            // Flatten the per-file findings so the assertions check the actual output produced by the scanner.
-            // This ensures we validate the detection layer, not just the existence of files in the results.
             var findings = results
                 .SelectMany(result => result.Findings)
                 .ToList();
 
-            // These assertions verify that a detected email and a password-like value are surfaced with the
-            // expected pattern name and raw match. This protects the regression case where a valid secret is
-            // not reported even though its file was scanned.
             Assert.IsTrue(
                 findings.Any(finding =>
                     finding.PatternName == "Email" &&
@@ -242,15 +230,10 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_GitignoredFile_IsNotScannedOrReported()
         {
-            // This test covers the repository-aware exclusion flow: if a file is listed in .gitignore,
-            // it should be treated as intentionally excluded and never be scanned or contribute any
-            // findings. This ensures the scanner matches developer guidance and avoids noisy results from
-            // files that are intentionally left out of version control.
+            // Verify that .gitignore exclusions prevent scanning and reporting.
             var ignoredFile = Path.Combine(_directorySorterTestPath, "ignored.txt");
             var includedFile = Path.Combine(_directorySorterTestPath, "included.txt");
 
-            // Add a .gitignore that excludes only the ignored file. The included file remains visible so
-            // the test can confirm the exclusion is selective rather than global.
             File.WriteAllText(
                 Path.Combine(_directorySorterTestPath, ".gitignore"),
                 "ignored.txt");
@@ -262,12 +245,10 @@ namespace KeyGuard.test
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
-            // The first assertion verifies that the excluded file is absent from the scan results entirely.
             Assert.IsFalse(
                 results.Any(result => result.FilePath == ignoredFile),
                 "A .gitignored file must not be scanned.");
 
-            // This confirms the filter is not overbroad: non-ignored files are still processed normally.
             Assert.IsTrue(
                 results.Any(result => result.FilePath == includedFile),
                 "A non-ignored file should be scanned.");
@@ -276,43 +257,60 @@ namespace KeyGuard.test
                 .SelectMany(result => result.Findings)
                 .ToList();
 
-            // Even if the ignored file had been scanned in some other path, its secret must not appear in
-            // the final findings list. This validates the end-to-end exclusion behavior.
             Assert.IsFalse(
                 findings.Any(finding => finding.RawMatch == "ignored@example.com"),
                 "Secrets from ignored files must not be reported.");
 
-            // By contrast, a valid included file should still produce its expected finding, proving the
-            // exclusion logic only suppresses the intentionally ignored path.
             Assert.IsTrue(
                 findings.Any(finding => finding.RawMatch == "included@example.com"),
                 "Secrets from included files should be reported.");
         }
 
         [TestMethod]
+        public void ScanDirectory_GitignoredDirectory_IsNotScannedOrReported()
+        {
+            var ignoredDirectory = Path.Combine(_directorySorterTestPath, ".vs", "v18", "TestStore");
+            Directory.CreateDirectory(ignoredDirectory);
+            var ignoredFile = Path.Combine(ignoredDirectory, "StandardOutput.txt");
+            var includedFile = Path.Combine(_directorySorterTestPath, "included.txt");
+
+            File.WriteAllText(Path.Combine(_directorySorterTestPath, ".gitignore"), ".vs/");
+            File.WriteAllText(ignoredFile, "email=ignored@example.com");
+            File.WriteAllText(includedFile, "email=included@example.com");
+
+            var results = DirectorySorter
+                .ScanDirectory(_directorySorterTestPath)
+                .ToList();
+
+            Assert.IsFalse(
+                results.Any(result => result.FilePath == ignoredFile),
+                "Files beneath an ignored directory must not be scanned.");
+            Assert.IsTrue(
+                results.Any(result => result.FilePath == includedFile),
+                "Files outside the ignored directory should still be scanned.");
+
+            Assert.IsFalse(
+                results.SelectMany(result => result.Findings)
+                    .Any(finding => finding.RawMatch == "ignored@example.com"),
+                "Secrets in the ignored directory must not be reported.");
+        }
+
+        [TestMethod]
         public void ScanDirectory_UnsupportedFiles_AreNotReturned()
         {
-            // This test verifies the filter boundary: only files with supported extensions should be
-            // returned from the directory scan. It protects against over-broad scanning where the tool
-            // might accidentally include unrelated file types and create noisy or misleading results.
+            // Verify that unsupported file types are skipped completely.
             File.WriteAllText(
                 Path.Combine(_directorySorterTestPath, "documentation.md"),
                 "email=markdown@example.com");
 
             File.WriteAllText(
                 Path.Combine(_directorySorterTestPath, "settings.json"),
-                "******");
+                "password=jsonSecret123");
 
-            // Run the real scan against a directory containing only intentionally unsupported files.
-            // If the file filtering logic is correct, the scan should reject both entries without
-            // producing any findings or file-level results.
             var results = DirectorySorter
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
-            // The assertion is strict because unsupported file types should be skipped completely, not
-            // merely ignored during pattern matching. A non-empty result would indicate the file filter is
-            // missing or misconfigured.
             Assert.IsEmpty(
                 results,
                 "Unsupported file types should be skipped completely.");
@@ -320,15 +318,10 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_NestedSupportedFile_ReturnsFindings()
         {
-            // This test verifies the recursive behavior of DirectorySorter: files located in nested
-            // subdirectories must still be discovered and scanned, not just files directly under the
-            // root directory. This mirrors real-world usage where logs, archives, or generated output
-            // may be stored in deeper folder structures.
+            // Verify that supported files in nested directories are discovered and scanned.
             var nestedDirectory = Path.Combine(_directorySorterTestPath, "logs", "archive");
             Directory.CreateDirectory(nestedDirectory);
 
-            // Place a supported file under a nested path so we can validate that the scanner traverses
-            // the directory tree and does not stop at the first level.
             var nestedFile = Path.Combine(nestedDirectory, "archived.log");
             File.WriteAllText(nestedFile, "email=nested@example.com");
 
@@ -336,7 +329,6 @@ namespace KeyGuard.test
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
-            // The first assertion proves the nested file was included in the scan results.
             Assert.IsTrue(
                 results.Any(result => result.FilePath == nestedFile),
                 "A supported file in a nested directory should be scanned.");
@@ -345,13 +337,35 @@ namespace KeyGuard.test
                 .SelectMany(result => result.Findings)
                 .ToList();
 
-            // The second assertion ensures the nested file was not only discovered, but also analyzed
-            // by the pattern engine and yielded a real detection match.
             Assert.IsTrue(
                 findings.Any(finding =>
                     finding.PatternName == "Email" &&
                     finding.RawMatch == "nested@example.com"),
                 "The email in the nested file should be detected.");
+        }
+
+
+        [TestMethod]
+        public void ScanRepository_CompletesInUnderThirtySeconds()
+        {
+            var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
+            while (repositoryRoot is not null &&
+                   !File.Exists(Path.Combine(repositoryRoot.FullName, "KeyGuard_SQAProject.slnx")))
+            {
+                repositoryRoot = repositoryRoot.Parent;
+            }
+
+            Assert.IsNotNull(repositoryRoot, "Could not locate the repository root.");
+
+            var stopwatch = Stopwatch.StartNew();
+            var results = DirectorySorter.ScanDirectory(repositoryRoot.FullName).ToList();
+            stopwatch.Stop();
+
+            Console.WriteLine(
+                $"Repository scan took {stopwatch.Elapsed.TotalSeconds:F3} seconds and scanned {results.Count} supported files.");
+            Assert.IsTrue(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(30),
+                $"Repository scan took {stopwatch.Elapsed.TotalSeconds:F3} seconds; it must take less than 30 seconds.");
         }
 
     }
