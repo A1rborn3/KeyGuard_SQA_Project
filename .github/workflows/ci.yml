@@ -1,0 +1,42 @@
+name: KeyGuard CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build KeyGuard_SQAProject.slnx -c Release
+
+      - name: Run tests
+        run: dotnet test KeyGuard_SQAProject.slnx -c Release --no-build
+
+      - name: Smoke test, known file gives 10 findings
+        shell: pwsh
+        run: |
+          $out = dotnet run --project KeyGuard_SQAProject/KeyGuard_SQAProject.csproj -c Release --no-build -- KeyGuard.test/TestingFiles/Secrets.log | Out-String
+          Write-Host $out
+          if ($out -notmatch "10 potential secrets found") { Write-Error "Smoke test failed: expected 10 findings"; exit 1 }
+
+      - name: Smoke test, missing file is rejected
+        shell: pwsh
+        run: |
+          dotnet run --project KeyGuard_SQAProject/KeyGuard_SQAProject.csproj -c Release --no-build -- does-not-exist.txt
+          $code = $LASTEXITCODE
+          Write-Host "Exit code was $code"
+          if ($code -eq 0) { Write-Error "Expected a non-zero exit code for a missing file"; exit 1 }
+          exit 0
