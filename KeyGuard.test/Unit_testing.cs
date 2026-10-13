@@ -41,6 +41,8 @@ namespace KeyGuard.test
             Assert.AreEqual("asdf************************************4321", Masking.Mask("asdfghjklqwertyuiopzxcvbnm123456789987654321"));
             //special chars handling (including asterisks at edge)
             Assert.AreEqual("asdf*********)-+", Masking.Mask("asdf!@#$%^&(*)-+"));
+            Assert.AreEqual("*********", Masking.Mask("123456789")); //testing for edge case of more than 8 chars but less than 12
+            Assert.AreEqual("1234****9012", Masking.Mask("123456789012")); //testing for edge case of  12 chars
 
         }
 
