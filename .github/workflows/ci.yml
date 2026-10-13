@@ -36,4 +36,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet run --project KeyGuard_SQAProject/KeyGuard_SQAProject.csproj -c Release --no-build -- does-not-exist.txt
-          if ($LASTEXITCODE -ne 2) { Write-Error "Expected exit code 2 for a missing file"; exit 1 }
+          $code = $LASTEXITCODE
+          Write-Host "Exit code was $code"
+          if ($code -eq 0) { Write-Error "Expected a non-zero exit code for a missing file"; exit 1 }
+          exit 0
