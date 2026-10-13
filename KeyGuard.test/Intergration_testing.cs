@@ -348,6 +348,7 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanRepository_CompletesInUnderThirtySeconds()
         {
+            // Start from the test output directory traverse up to find the repository root.
             var repositoryRoot = new DirectoryInfo(AppContext.BaseDirectory);
             while (repositoryRoot is not null &&
                    !File.Exists(Path.Combine(repositoryRoot.FullName, "KeyGuard_SQAProject.slnx")))
@@ -357,12 +358,15 @@ namespace KeyGuard.test
 
             Assert.IsNotNull(repositoryRoot, "Could not locate the repository root.");
 
+            // Materialize the scan results so the full directory scan is included in the timing.
             var stopwatch = Stopwatch.StartNew();
             var results = DirectorySorter.ScanDirectory(repositoryRoot.FullName).ToList();
             stopwatch.Stop();
 
+            // Log the elapsed time and number of scanned files to help diagnose performance regressions.
             Console.WriteLine(
                 $"Repository scan took {stopwatch.Elapsed.TotalSeconds:F3} seconds and scanned {results.Count} supported files.");
+            // Ensure scanning the repository remains within the test's 30-second performance limit.
             Assert.IsTrue(
                 stopwatch.Elapsed < TimeSpan.FromSeconds(30),
                 $"Repository scan took {stopwatch.Elapsed.TotalSeconds:F3} seconds; it must take less than 30 seconds.");
