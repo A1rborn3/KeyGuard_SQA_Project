@@ -269,19 +269,23 @@ namespace KeyGuard.test
         [TestMethod]
         public void ScanDirectory_GitignoredDirectory_IsNotScannedOrReported()
         {
+            // Create a nested file under a directory that the root .gitignore will exclude.
             var ignoredDirectory = Path.Combine(_directorySorterTestPath, ".vs", "v18", "TestStore");
             Directory.CreateDirectory(ignoredDirectory);
             var ignoredFile = Path.Combine(ignoredDirectory, "StandardOutput.txt");
             var includedFile = Path.Combine(_directorySorterTestPath, "included.txt");
 
+            // Add secret-like values to both files so the test can distinguish ignored from scanned content.
             File.WriteAllText(Path.Combine(_directorySorterTestPath, ".gitignore"), ".vs/");
             File.WriteAllText(ignoredFile, "email=ignored@example.com");
             File.WriteAllText(includedFile, "email=included@example.com");
 
+            // Scan the temporary directory and materialize results for the assertions below.
             var results = DirectorySorter
                 .ScanDirectory(_directorySorterTestPath)
                 .ToList();
 
+            // The file under .vs should be excluded, while the root-level file should remain in the results.
             Assert.IsFalse(
                 results.Any(result => result.FilePath == ignoredFile),
                 "Files beneath an ignored directory must not be scanned.");
@@ -289,6 +293,7 @@ namespace KeyGuard.test
                 results.Any(result => result.FilePath == includedFile),
                 "Files outside the ignored directory should still be scanned.");
 
+            // Confirm that scanning did not report the secret contained in the ignored directory.
             Assert.IsFalse(
                 results.SelectMany(result => result.Findings)
                     .Any(finding => finding.RawMatch == "ignored@example.com"),
